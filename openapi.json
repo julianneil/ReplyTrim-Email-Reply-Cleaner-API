@@ -1,0 +1,380 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "LogShield PII & Secret Redaction API",
+    "description": "A deterministic text-sanitization API. It returns match positions and never echoes detected secret values in its match metadata.",
+    "version": "1.0.0"
+  },
+  "paths": {
+    "/v1/types": {
+      "get": {
+        "tags": [
+          "detectors"
+        ],
+        "summary": "List supported detector types",
+        "operationId": "listDetectorTypes",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/TypeInfo"
+                  },
+                  "type": "array",
+                  "title": "Response Listdetectortypes"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/detect": {
+      "post": {
+        "tags": [
+          "detectors"
+        ],
+        "summary": "Detect PII and credential-like values",
+        "operationId": "detectSensitiveValues",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DetectionRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DetectionResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/redact": {
+      "post": {
+        "tags": [
+          "redaction"
+        ],
+        "summary": "Redact detected values from text",
+        "operationId": "redactSensitiveValues",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RedactionRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RedactionResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "DetectionRequest": {
+        "properties": {
+          "text": {
+            "type": "string",
+            "maxLength": 20000,
+            "minLength": 1,
+            "title": "Text",
+            "description": "Text to inspect. The service does not need to store it."
+          },
+          "entities": {
+            "items": {
+              "$ref": "#/components/schemas/EntityType"
+            },
+            "type": "array",
+            "title": "Entities",
+            "description": "Optional detector allow-list. Omit it to run every detector."
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "text"
+        ],
+        "title": "DetectionRequest"
+      },
+      "DetectionResponse": {
+        "properties": {
+          "total": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Total"
+          },
+          "counts": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "type": "object",
+            "title": "Counts"
+          },
+          "matches": {
+            "items": {
+              "$ref": "#/components/schemas/MatchResponse"
+            },
+            "type": "array",
+            "title": "Matches"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "total",
+          "counts",
+          "matches"
+        ],
+        "title": "DetectionResponse"
+      },
+      "EntityType": {
+        "type": "string",
+        "enum": [
+          "email",
+          "phone",
+          "ipv4",
+          "credit_card",
+          "iban",
+          "jwt",
+          "aws_access_key",
+          "github_token",
+          "slack_token",
+          "bearer_token",
+          "private_key",
+          "secret_assignment"
+        ],
+        "title": "EntityType"
+      },
+      "HTTPValidationError": {
+        "properties": {
+          "detail": {
+            "items": {
+              "$ref": "#/components/schemas/ValidationError"
+            },
+            "type": "array",
+            "title": "Detail"
+          }
+        },
+        "type": "object",
+        "title": "HTTPValidationError"
+      },
+      "MatchResponse": {
+        "properties": {
+          "type": {
+            "$ref": "#/components/schemas/EntityType"
+          },
+          "start": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Start"
+          },
+          "end": {
+            "type": "integer",
+            "minimum": 1.0,
+            "title": "End"
+          },
+          "confidence": {
+            "type": "number",
+            "maximum": 1.0,
+            "minimum": 0.0,
+            "title": "Confidence"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "type",
+          "start",
+          "end",
+          "confidence"
+        ],
+        "title": "MatchResponse"
+      },
+      "RedactionRequest": {
+        "properties": {
+          "text": {
+            "type": "string",
+            "maxLength": 20000,
+            "minLength": 1,
+            "title": "Text",
+            "description": "Text to inspect. The service does not need to store it."
+          },
+          "entities": {
+            "items": {
+              "$ref": "#/components/schemas/EntityType"
+            },
+            "type": "array",
+            "title": "Entities",
+            "description": "Optional detector allow-list. Omit it to run every detector."
+          },
+          "mode": {
+            "$ref": "#/components/schemas/ReplacementMode",
+            "description": "label creates values such as [EMAIL]; fixed uses replacement.",
+            "default": "label"
+          },
+          "replacement": {
+            "type": "string",
+            "maxLength": 100,
+            "minLength": 1,
+            "title": "Replacement",
+            "description": "Replacement used when mode is fixed.",
+            "default": "[REDACTED]"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "text"
+        ],
+        "title": "RedactionRequest"
+      },
+      "RedactionResponse": {
+        "properties": {
+          "total": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Total"
+          },
+          "counts": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "type": "object",
+            "title": "Counts"
+          },
+          "matches": {
+            "items": {
+              "$ref": "#/components/schemas/MatchResponse"
+            },
+            "type": "array",
+            "title": "Matches"
+          },
+          "redacted_text": {
+            "type": "string",
+            "title": "Redacted Text"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "total",
+          "counts",
+          "matches",
+          "redacted_text"
+        ],
+        "title": "RedactionResponse"
+      },
+      "ReplacementMode": {
+        "type": "string",
+        "enum": [
+          "label",
+          "fixed"
+        ],
+        "title": "ReplacementMode"
+      },
+      "TypeInfo": {
+        "properties": {
+          "type": {
+            "$ref": "#/components/schemas/EntityType"
+          },
+          "description": {
+            "type": "string",
+            "title": "Description"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "type",
+          "description"
+        ],
+        "title": "TypeInfo"
+      },
+      "ValidationError": {
+        "properties": {
+          "loc": {
+            "items": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                }
+              ]
+            },
+            "type": "array",
+            "title": "Location"
+          },
+          "msg": {
+            "type": "string",
+            "title": "Message"
+          },
+          "type": {
+            "type": "string",
+            "title": "Error Type"
+          },
+          "input": {
+            "title": "Input"
+          },
+          "ctx": {
+            "type": "object",
+            "title": "Context"
+          }
+        },
+        "type": "object",
+        "required": [
+          "loc",
+          "msg",
+          "type"
+        ],
+        "title": "ValidationError"
+      }
+    }
+  }
+}
